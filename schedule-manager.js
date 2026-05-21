@@ -10,6 +10,7 @@
   const CALENDAR_SHIFT_WEEKS = 2;
   const ALARM_SETTINGS_KEY = 'soma_alarm_sync_settings';
   const ALARM_SYNC_META_KEY = 'soma_alarm_sync_meta';
+  const CENTRAL_WORKER_BASE_URL = 'https://asm-schedule-alarm.pa6764.workers.dev';
   const FIXED_SHARED_SCHEDULES = [
     {
       id: 'shared_orientation_2026_06_30',
@@ -26,7 +27,6 @@
   let startOffsetWeeks = 0; // 0 means starting from the Sunday of current week
   let hideEndedLectures = false;
   let editingScheduleId = null;
-  let syncInFlight = false;
   let lastAutoSyncSignature = '';
 
   // Helper: check if a lecture/schedule has ended
@@ -116,33 +116,55 @@
     if (!dateTimeText) return null;
 
     const normalized = dateTimeText.replace(/\s+/g, ' ').trim();
-    const match = normalized.match(
-      /(\d{4})[-./](\d{2})[-./](\d{2})(?:\([^)]+\))?\s*(\d{2})(?::(\d{2}))?\s*시?\s*~\s*(\d{2})(?::(\d{2}))?\s*시?/
+    const dateMatch = normalized.match(/(\d{4})[-./]\s*(\d{1,2})[-./]\s*(\d{1,2})/);
+    if (!dateMatch) return null;
+
+    const timeSource = normalized.slice((dateMatch.index || 0) + dateMatch[0].length);
+    const timeMatch = timeSource.match(
+      /(?:(오전|오후)\s*)?(\d{1,2})(?::(\d{1,2}))?(?::\d{1,2})?\s*시?\s*[~\-]\s*(?:(오전|오후)\s*)?(\d{1,2})(?::(\d{1,2}))?(?::\d{1,2})?\s*시?/
     );
+    if (!timeMatch) return null;
 
-    if (!match) return null;
+    const [, y, m, d] = dateMatch;
+    const [, startMeridiem, startHourRaw, startMinuteRaw = '00', endMeridiem, endHourRaw, endMinuteRaw = '00'] = timeMatch;
 
-    const [, y, m, d, sh, sm = '00', eh, em = '00'] = match;
-    return { y, m, d, sh, sm, eh, em };
+    const normalizeHour = (hourRaw, meridiem) => {
+      let hour = parseInt(hourRaw, 10);
+      if (Number.isNaN(hour)) return null;
+      if (meridiem === '오전' && hour === 12) hour = 0;
+      if (meridiem === '오후' && hour < 12) hour += 12;
+      return String(hour).padStart(2, '0');
+    };
+
+    const sh = normalizeHour(startHourRaw, startMeridiem);
+    const eh = normalizeHour(endHourRaw, endMeridiem);
+    if (!sh || !eh) return null;
+
+    return {
+      y,
+      m: String(parseInt(m, 10)).padStart(2, '0'),
+      d: String(parseInt(d, 10)).padStart(2, '0'),
+      sh,
+      sm: String(parseInt(startMinuteRaw, 10)).padStart(2, '0'),
+      eh,
+      em: String(parseInt(endMinuteRaw, 10)).padStart(2, '0')
+    };
   }
 
-  function buildLectureDate(dateStr, timeStr) {
+  async function loadPersonalSchedules() {
+    return new Promise(resolve => {
+      chrome.storage.local.get(['soma_personal_schedules'], (res) => {
+        resolve(res.soma_personal_schedules || []);
+      });
+    });
+  }
+
+  function buildKstIsoString(dateStr, timeStr) {
     if (!dateStr || !timeStr) return null;
     const [y, m, d] = dateStr.split('-').map(Number);
     const [hh, mm] = timeStr.split(':').map(Number);
     if ([y, m, d, hh, mm].some(Number.isNaN)) return null;
-    return new Date(y, m - 1, d, hh, mm, 0);
-  }
-
-  function formatKstIsoString(date) {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+09:00`;
+    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00+09:00`;
   }
 
   function pickLectureTimes(dateTimeText, dateStr) {
@@ -150,47 +172,26 @@
     if (!parsed) return { startAt: '', endAt: '' };
 
     const normalizedDateStr = dateStr || `${parsed.y}-${parsed.m}-${parsed.d}`;
-    const startDate = buildLectureDate(normalizedDateStr, `${parsed.sh.padStart(2, '0')}:${parsed.sm.padStart(2, '0')}`);
-    const endDate = buildLectureDate(normalizedDateStr, `${parsed.eh.padStart(2, '0')}:${parsed.em.padStart(2, '0')}`);
+    const startAt = buildKstIsoString(normalizedDateStr, `${parsed.sh}:${parsed.sm}`);
+    const endAt = buildKstIsoString(normalizedDateStr, `${parsed.eh}:${parsed.em}`);
 
     return {
-      startAt: formatKstIsoString(startDate),
-      endAt: formatKstIsoString(endDate)
+      startAt: startAt || '',
+      endAt: endAt || ''
     };
   }
 
-  function normalizeWorkerUrl(rawUrl) {
-    const trimmed = (rawUrl || '').trim();
-    if (!trimmed) return '';
-
-    try {
-      const url = new URL(trimmed);
-      return url.origin;
-    } catch {
-      return '';
-    }
+  function deriveAlarmUserId(settings = {}) {
+    return (settings.userId || '').trim().toLowerCase();
   }
 
   function sanitizeAlarmSettings(input = {}) {
-    const offsets = Array.isArray(input.notifyOffsetsMinutes)
-      ? input.notifyOffsetsMinutes
-      : [60, 30];
-
-    const normalizedOffsets = [...new Set(
-      offsets
-        .map(value => parseInt(value, 10))
-        .filter(value => value === 30 || value === 60)
-    )].sort((a, b) => b - a);
-
     return {
-      workerBaseUrl: normalizeWorkerUrl(input.workerBaseUrl),
-      apiToken: (input.apiToken || '').trim(),
-      userId: (input.userId || '').trim(),
+      workerBaseUrl: CENTRAL_WORKER_BASE_URL,
+      userId: (input.userId || '').trim().toLowerCase(),
       userLabel: (input.userLabel || '').trim(),
       discordWebhookUrl: (input.discordWebhookUrl || '').trim(),
-      telegramBotToken: (input.telegramBotToken || '').trim(),
-      telegramChatId: (input.telegramChatId || '').trim(),
-      notifyOffsetsMinutes: normalizedOffsets.length ? normalizedOffsets : [60, 30],
+      notificationsEnabled: input.notificationsEnabled !== false,
       autoSyncEnabled: input.autoSyncEnabled !== false
     };
   }
@@ -230,6 +231,29 @@
     });
   }
 
+  async function extensionFetch(url, options = {}) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        type: 'asm-worker-fetch',
+        url,
+        options
+      }, (response) => {
+        const runtimeError = chrome.runtime.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message || '확장 프로그램 백그라운드 요청에 실패했습니다.'));
+          return;
+        }
+
+        if (!response) {
+          reject(new Error('백그라운드 응답이 비어 있습니다.'));
+          return;
+        }
+
+        resolve(response);
+      });
+    });
+  }
+
   function lectureToAlarmSchedule(lecture) {
     if (!lecture?.dateStr || !lecture?.dateTimeText) return null;
     const { startAt, endAt } = pickLectureTimes(lecture.dateTimeText, lecture.dateStr);
@@ -251,70 +275,126 @@
 
   function buildAlarmPayload(lectures, settings) {
     const now = Date.now();
-    const schedules = lectures
+    const parseFailures = [];
+    const lectureFailures = [];
+    const lectureCandidates = lectures
       .filter(lecture => !isLectureEnded(lecture.dateTimeText))
-      .map(lectureToAlarmSchedule)
-      .filter(schedule => {
-        if (!schedule?.startsAt) return false;
-        const startsAt = new Date(schedule.startsAt).getTime();
-        return !Number.isNaN(startsAt) && startsAt >= now;
-      });
+      .map(lecture => {
+        const schedule = lectureToAlarmSchedule(lecture);
+        if (!schedule) {
+          parseFailures.push({
+            title: lecture.title,
+            raw: lecture.dateTimeText
+          });
+          lectureFailures.push({
+            title: lecture.title,
+            raw: lecture.dateTimeText
+          });
+        }
+        return { lecture, schedule };
+      })
+      .filter(item => item?.schedule);
+
+    const lectureDroppedAsPast = [];
+    const schedules = lectureCandidates
+      .map(item => {
+        const startsAt = new Date(item.schedule.startsAt).getTime();
+        if (Number.isNaN(startsAt) || startsAt < now) {
+          lectureDroppedAsPast.push({
+            title: item.lecture.title,
+            raw: item.lecture.dateTimeText,
+            startsAt: item.schedule.startsAt
+          });
+          return null;
+        }
+        return item.schedule;
+      })
+      .filter(Boolean);
 
     return {
-      userId: settings.userId || 'default-user',
+      userId: deriveAlarmUserId(settings) || 'default-user',
       userLabel: settings.userLabel || '',
-      notifyOffsetsMinutes: settings.notifyOffsetsMinutes,
+      notifyEnabled: settings.notificationsEnabled,
       notificationTargets: {
-        discordWebhookUrl: settings.discordWebhookUrl,
-        telegramBotToken: settings.telegramBotToken,
-        telegramChatId: settings.telegramChatId
+        discordWebhookUrl: settings.discordWebhookUrl
       },
-      schedules
+      schedules,
+      parseFailures,
+      debug: {
+        nowIso: new Date(now).toISOString(),
+        lectureInputCount: lectures.length,
+        lectureScheduleCount: schedules.length,
+        lectureFailures,
+        lectureDroppedAsPast: lectureDroppedAsPast.slice(0, 5)
+      }
     };
   }
 
   function getAlarmPayloadSignature(payload) {
     return JSON.stringify({
       userId: payload.userId,
-      notifyOffsetsMinutes: payload.notifyOffsetsMinutes,
+      userLabel: payload.userLabel,
+      notifyEnabled: payload.notifyEnabled,
+      notificationTargets: payload.notificationTargets,
       schedules: payload.schedules.map(schedule => ({
         sourceEventId: schedule.sourceEventId,
+        title: schedule.title,
+        lectureType: schedule.lectureType,
+        mentorName: schedule.mentorName,
         startsAt: schedule.startsAt,
-        endsAt: schedule.endsAt
+        endsAt: schedule.endsAt,
+        location: schedule.location,
+        status: schedule.status,
+        detailUrl: schedule.detailUrl,
+        cancelable: schedule.cancelable
       }))
     });
   }
 
   async function syncSchedulesToCloudflare(lectures, settings, options = {}) {
     const syncSettings = sanitizeAlarmSettings(settings);
-    if (!syncSettings.workerBaseUrl || !syncSettings.apiToken) {
-      throw new Error('Cloudflare Worker 주소와 API 토큰을 먼저 저장해야 합니다.');
+    if (!deriveAlarmUserId(syncSettings)) {
+      throw new Error('소마 계정 이메일을 먼저 입력해야 합니다.');
     }
-
-    if (!syncSettings.discordWebhookUrl && !(syncSettings.telegramBotToken && syncSettings.telegramChatId)) {
-      throw new Error('디스코드 Webhook 또는 텔레그램 Bot Token/Chat ID 중 하나는 필요합니다.');
+    if (!syncSettings.discordWebhookUrl) {
+      throw new Error('Discord Webhook URL을 먼저 입력해야 합니다.');
     }
 
     const payload = buildAlarmPayload(lectures, syncSettings);
-    if (payload.schedules.length === 0) {
+    console.log('ASM alarm payload debug:', payload.debug);
+
+    if (payload.schedules.length === 0 && !options.allowEmptySchedules) {
+      if (payload.parseFailures.length > 0) {
+        const firstFailure = payload.parseFailures[0];
+        throw new Error(`일정 ${payload.parseFailures.length}건의 시간 파싱에 실패했습니다. 예: ${firstFailure.title} / ${firstFailure.raw}`);
+      }
       throw new Error('동기화할 예정된 신청 일정이 없습니다.');
     }
 
     const signature = getAlarmPayloadSignature(payload);
-    if (options.auto && signature === lastAutoSyncSignature) {
-      return { skipped: true, message: '변경된 일정이 없어 자동 동기화를 건너뛰었습니다.' };
+    const lastSyncMeta = await loadAlarmSyncMeta();
+    const lastSignature = lastSyncMeta?.signature || '';
+    if (options.auto && (signature === lastSignature || signature === lastAutoSyncSignature)) {
+      await saveAlarmSyncMeta({
+        success: true,
+        skipped: true,
+        signature,
+        scheduleCount: payload.schedules.length,
+        workerBaseUrl: syncSettings.workerBaseUrl,
+        message: '변경된 일정이 없어 동기화를 건너뛰었습니다.'
+      });
+      return { skipped: true, message: '변경된 일정이 없어 동기화를 건너뛰었습니다.' };
     }
 
-    const response = await fetch(`${syncSettings.workerBaseUrl}/api/schedules/sync`, {
+    const response = await extensionFetch(`${syncSettings.workerBaseUrl}/api/public/schedules/sync`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${syncSettings.apiToken}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
-    const responseText = await response.text();
+    const responseText = response.text || '';
     let data = null;
     try {
       data = responseText ? JSON.parse(responseText) : null;
@@ -323,7 +403,7 @@
     }
 
     if (!response.ok) {
-      const message = data?.error || data?.message || `동기화 요청이 실패했습니다. (${response.status})`;
+      const message = data?.error || data?.message || response.error || `동기화 요청이 실패했습니다. (${response.status || 'network'})`;
       throw new Error(message);
     }
 
@@ -331,6 +411,7 @@
     await saveAlarmSyncMeta({
       success: true,
       skipped: false,
+      signature,
       scheduleCount: payload.schedules.length,
       workerBaseUrl: syncSettings.workerBaseUrl
     });
@@ -340,38 +421,6 @@
       scheduleCount: payload.schedules.length,
       message: data?.message || `일정 ${payload.schedules.length}건을 동기화했습니다.`
     };
-  }
-
-  async function sendTestNotificationToCloudflare(settings) {
-    const syncSettings = sanitizeAlarmSettings(settings);
-    if (!syncSettings.workerBaseUrl || !syncSettings.apiToken || !syncSettings.userId) {
-      throw new Error('테스트 알림을 보내려면 Worker URL, API 토큰, 사용자 ID가 필요합니다.');
-    }
-
-    const response = await fetch(`${syncSettings.workerBaseUrl}/api/notifications/test`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${syncSettings.apiToken}`
-      },
-      body: JSON.stringify({
-        userId: syncSettings.userId
-      })
-    });
-
-    const responseText = await response.text();
-    let data = null;
-    try {
-      data = responseText ? JSON.parse(responseText) : null;
-    } catch {
-      data = null;
-    }
-
-    if (!response.ok) {
-      throw new Error(data?.error || data?.message || `테스트 알림 요청이 실패했습니다. (${response.status})`);
-    }
-
-    return data?.message || '테스트 알림을 전송했습니다.';
   }
 
   // Fetch SOMA lecture details (Location & Enrollment) with cache support
@@ -783,11 +832,7 @@
         return;
       }
 
-      const currentList = await new Promise(resolve => {
-        chrome.storage.local.get(['soma_personal_schedules'], (res) => {
-          resolve(res.soma_personal_schedules || []);
-        });
-      });
+      const currentList = await loadPersonalSchedules();
 
       if (editingScheduleId) {
         const index = currentList.findIndex(item => item.id === editingScheduleId);
@@ -824,6 +869,7 @@
       endSelect.value = '10:00';
 
       const lectures = await parseLecturesTable();
+      await syncSchedulesAfterLocalChange(lectures, currentList);
       renderCalendar(lectures);
     });
   }
@@ -885,174 +931,137 @@
     }
   }
 
-  async function createAlarmSyncPanel(lectures) {
-    const settings = await loadAlarmSettings();
-    const syncMeta = await loadAlarmSyncMeta();
+  async function openAlarmSettingsModal({ lectures, onSaved }) {
+    let modal = document.getElementById('alarm-settings-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'alarm-settings-modal';
+      modal.className = 'modal-backdrop';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
 
-    const panel = document.createElement('section');
-    panel.className = 'alarm-sync-panel';
-    panel.innerHTML = `
-      <div class="alarm-sync-panel__header">
-        <div>
-          <h4>외부 알림 동기화</h4>
-          <p>신청한 멘토링 일정을 Cloudflare Worker + D1에 저장하고, 시작 30분/1시간 전에 디스코드 또는 텔레그램으로 알림을 보냅니다.</p>
+    const currentSettings = await loadAlarmSettings();
+    modal.innerHTML = `
+      <div class="modal-content alarm-settings-modal-content">
+        <div class="modal-header">
+          <h4>🔔 알림 설정</h4>
+          <button type="button" class="close-modal-btn">&times;</button>
         </div>
-        <div class="alarm-sync-panel__meta">
-          <span class="alarm-sync-badge">${lectures.filter(lecture => !isLectureEnded(lecture.dateTimeText)).length}건 예정</span>
-        </div>
+        <form id="alarm-settings-form">
+          <div class="alarm-settings-grid">
+            <label class="alarm-settings-field">
+              <span>소마 계정 이메일</span>
+              <input type="email" name="userId" placeholder="예: user@soma.or.kr" value="${currentSettings.userId}">
+            </label>
+            <label class="alarm-settings-field">
+              <span>표시 이름</span>
+              <input type="text" name="userLabel" placeholder="예: 재민" value="${currentSettings.userLabel}">
+            </label>
+            <label class="alarm-settings-field alarm-settings-field--full">
+              <span>Discord Webhook URL</span>
+              <input type="url" name="discordWebhookUrl" placeholder="https://discord.com/api/webhooks/..." value="${currentSettings.discordWebhookUrl}">
+            </label>
+          </div>
+          <div class="alarm-settings-actions">
+            <button type="submit" class="control-btn accent">설정 저장</button>
+            <button type="button" class="control-btn secondary btn-cancel-alarm-setup">취소</button>
+          </div>
+        </form>
       </div>
-      <form id="alarm-sync-form" class="alarm-sync-form">
-        <div class="alarm-sync-grid">
-          <label class="alarm-sync-field">
-            <span>Worker URL</span>
-            <input type="url" name="workerBaseUrl" placeholder="https://your-worker.your-subdomain.workers.dev" value="${settings.workerBaseUrl}">
-          </label>
-          <label class="alarm-sync-field">
-            <span>API 토큰</span>
-            <input type="password" name="apiToken" placeholder="Cloudflare Worker에서 검증할 토큰" value="${settings.apiToken}">
-          </label>
-          <label class="alarm-sync-field">
-            <span>사용자 ID</span>
-            <input type="text" name="userId" placeholder="예: jaemin" value="${settings.userId}">
-          </label>
-          <label class="alarm-sync-field">
-            <span>표시 이름</span>
-            <input type="text" name="userLabel" placeholder="예: 재민" value="${settings.userLabel}">
-          </label>
-          <label class="alarm-sync-field alarm-sync-field--full">
-            <span>Discord Webhook URL</span>
-            <input type="url" name="discordWebhookUrl" placeholder="https://discord.com/api/webhooks/..." value="${settings.discordWebhookUrl}">
-          </label>
-          <label class="alarm-sync-field">
-            <span>Telegram Bot Token</span>
-            <input type="password" name="telegramBotToken" placeholder="123456:ABC..." value="${settings.telegramBotToken}">
-          </label>
-          <label class="alarm-sync-field">
-            <span>Telegram Chat ID</span>
-            <input type="text" name="telegramChatId" placeholder="예: 123456789" value="${settings.telegramChatId}">
-          </label>
-        </div>
-        <div class="alarm-sync-options">
-          <label><input type="checkbox" name="notifyOffset60" ${settings.notifyOffsetsMinutes.includes(60) ? 'checked' : ''}> 1시간 전 알림</label>
-          <label><input type="checkbox" name="notifyOffset30" ${settings.notifyOffsetsMinutes.includes(30) ? 'checked' : ''}> 30분 전 알림</label>
-          <label><input type="checkbox" name="autoSyncEnabled" ${settings.autoSyncEnabled ? 'checked' : ''}> 페이지 열 때 자동 동기화</label>
-        </div>
-        <div class="alarm-sync-actions">
-          <button type="submit" class="control-btn accent">설정 저장</button>
-          <button type="button" id="btn-sync-cloudflare" class="control-btn">지금 동기화</button>
-          <button type="button" id="btn-test-notification" class="control-btn secondary">테스트 알림</button>
-          <span id="alarm-sync-status" class="alarm-sync-status">${syncMeta?.success ? `마지막 동기화: ${new Date(syncMeta.updatedAt).toLocaleString('ko-KR')}` : '아직 Cloudflare 동기화 기록이 없습니다.'}</span>
-        </div>
-      </form>
     `;
 
-    const form = panel.querySelector('#alarm-sync-form');
-    const statusEl = panel.querySelector('#alarm-sync-status');
-    const syncBtn = panel.querySelector('#btn-sync-cloudflare');
-    const testBtn = panel.querySelector('#btn-test-notification');
-
-    const setStatus = (message, tone = 'muted') => {
-      statusEl.textContent = message;
-      statusEl.setAttribute('data-tone', tone);
+    const closeModal = () => {
+      modal.style.display = 'none';
     };
 
-    const readFormSettings = () => sanitizeAlarmSettings({
-      workerBaseUrl: form.workerBaseUrl.value,
-      apiToken: form.apiToken.value,
-      userId: form.userId.value,
-      userLabel: form.userLabel.value,
-      discordWebhookUrl: form.discordWebhookUrl.value,
-      telegramBotToken: form.telegramBotToken.value,
-      telegramChatId: form.telegramChatId.value,
-      notifyOffsetsMinutes: [
-        form.notifyOffset60.checked ? 60 : null,
-        form.notifyOffset30.checked ? 30 : null
-      ],
-      autoSyncEnabled: form.autoSyncEnabled.checked
-    });
+    modal.style.display = 'flex';
+    const form = modal.querySelector('#alarm-settings-form');
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    const cancelBtn = modal.querySelector('.btn-cancel-alarm-setup');
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeModal();
+    }, { once: true });
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const nextSettings = await saveAlarmSettings(readFormSettings());
-      setStatus('설정을 저장했습니다. 필요하면 바로 동기화하세요.', 'success');
-      if (!nextSettings.notifyOffsetsMinutes.length) {
-        setStatus('최소 한 개의 알림 시점(30분/1시간 전)을 선택해야 합니다.', 'error');
-      }
-    });
-
-    syncBtn.addEventListener('click', async () => {
-      if (syncInFlight) return;
-
-      try {
-        syncInFlight = true;
-        syncBtn.disabled = true;
-        setStatus('Cloudflare Worker로 일정을 동기화하는 중입니다...', 'muted');
-        const savedSettings = await saveAlarmSettings(readFormSettings());
-        const result = await syncSchedulesToCloudflare(lectures, savedSettings, { auto: false });
-        setStatus(result.message, 'success');
-      } catch (error) {
-        console.error('Failed to sync schedules to Cloudflare:', error);
-        await saveAlarmSyncMeta({
-          success: false,
-          skipped: false,
-          message: error.message || 'Cloudflare 동기화 실패'
-        });
-        setStatus(error.message || 'Cloudflare 동기화에 실패했습니다.', 'error');
-      } finally {
-        syncInFlight = false;
-        syncBtn.disabled = false;
-      }
-    });
-
-    testBtn.addEventListener('click', async () => {
-      if (syncInFlight) return;
-
-      try {
-        syncInFlight = true;
-        syncBtn.disabled = true;
-        testBtn.disabled = true;
-        setStatus('테스트 알림을 보내는 중입니다...', 'muted');
-        const savedSettings = await saveAlarmSettings(readFormSettings());
-        const message = await sendTestNotificationToCloudflare(savedSettings);
-        setStatus(message, 'success');
-      } catch (error) {
-        console.error('Failed to send test notification:', error);
-        setStatus(error.message || '테스트 알림 전송에 실패했습니다.', 'error');
-      } finally {
-        syncInFlight = false;
-        syncBtn.disabled = false;
-        testBtn.disabled = false;
-      }
-    });
-
-    if (settings.autoSyncEnabled && settings.workerBaseUrl && settings.apiToken) {
-      queueMicrotask(async () => {
-        if (syncInFlight) return;
-
-        try {
-          syncInFlight = true;
-          syncBtn.disabled = true;
-          testBtn.disabled = true;
-          setStatus('저장된 설정으로 자동 동기화를 확인하는 중입니다...', 'muted');
-          const result = await syncSchedulesToCloudflare(lectures, settings, { auto: true });
-          setStatus(result.message, result.skipped ? 'muted' : 'success');
-        } catch (error) {
-          console.error('Auto sync failed:', error);
-          await saveAlarmSyncMeta({
-            success: false,
-            skipped: false,
-            message: error.message || '자동 동기화 실패'
-          });
-          setStatus(`자동 동기화 실패: ${error.message || '알 수 없는 오류'}`, 'error');
-        } finally {
-          syncInFlight = false;
-          syncBtn.disabled = false;
-          testBtn.disabled = false;
-        }
+      const nextSettings = await saveAlarmSettings({
+        ...currentSettings,
+        userId: form.userId.value,
+        userLabel: form.userLabel.value,
+        discordWebhookUrl: form.discordWebhookUrl.value,
+        notificationsEnabled: true,
+        autoSyncEnabled: currentSettings.autoSyncEnabled
       });
+
+      try {
+        await syncSchedulesToCloudflare(lectures, nextSettings, { auto: false });
+        closeModal();
+        if (typeof onSaved === 'function') {
+          await onSaved();
+        }
+      } catch (error) {
+        alert(error.message || '알림 설정 저장에 실패했습니다.');
+      }
+    });
+  }
+
+  async function toggleAlarmNotifications({ lectures, onChanged }) {
+    const currentSettings = await loadAlarmSettings();
+    const isConfigured = Boolean(currentSettings.userId && currentSettings.discordWebhookUrl);
+
+    if (!isConfigured) {
+      await openAlarmSettingsModal({ lectures, onSaved: onChanged });
+      return { configured: false };
     }
 
-    return panel;
+    const nextSettings = await saveAlarmSettings({
+      ...currentSettings,
+      notificationsEnabled: !currentSettings.notificationsEnabled
+    });
+
+    try {
+      await syncSchedulesToCloudflare(lectures, nextSettings, {
+        auto: false,
+        allowEmptySchedules: true
+      });
+    } catch (error) {
+      console.error('Failed to toggle alarm notifications:', error);
+    }
+
+    if (typeof onChanged === 'function') {
+      await onChanged();
+    }
+
+    return {
+      configured: true,
+      notificationsEnabled: nextSettings.notificationsEnabled
+    };
+  }
+
+  async function syncSchedulesAfterLocalChange() {
+    return { skipped: true, message: '개인 일정 변경은 알림 동기화 대상이 아닙니다.' };
+  }
+
+  async function syncSchedulesOnHistoryPageLoadIfConfigured(lectures) {
+    const settings = await loadAlarmSettings();
+    if (!settings.autoSyncEnabled) return null;
+    if (!settings.discordWebhookUrl || !deriveAlarmUserId(settings)) return null;
+
+    try {
+      return await syncSchedulesToCloudflare(lectures, settings, { auto: true });
+    } catch (error) {
+      console.error('Auto sync on history page load failed:', error);
+      await saveAlarmSyncMeta({
+        success: false,
+        skipped: false,
+        message: error.message || '페이지 로드 자동 동기화 실패'
+      });
+      return null;
+    }
   }
 
   // Render the Calendar UI
@@ -1066,11 +1075,12 @@
     if (!targetContainer) return;
 
     // Load personal schedules
-    const personalSchedules = await new Promise(resolve => {
-      chrome.storage.local.get(['soma_personal_schedules'], (res) => {
-        resolve(res.soma_personal_schedules || []);
-      });
-    });
+    const personalSchedules = await loadPersonalSchedules();
+    const alarmSettings = await loadAlarmSettings();
+    const isAlarmConfigured = Boolean(alarmSettings.userId && alarmSettings.discordWebhookUrl);
+    const alarmToggleLabel = !isAlarmConfigured
+      ? '🔔 알림 받기'
+      : (alarmSettings.notificationsEnabled ? '🔔 알림 끄기' : '🔕 알림 받기');
 
     const mergedPersonalSchedules = [...FIXED_SHARED_SCHEDULES, ...personalSchedules];
 
@@ -1086,6 +1096,7 @@
         <span class="calendar-subtitle">접수한 일정과 내 개인 일정을 함께 모아 관리합니다.</span>
       </div>
       <div class="calendar-controls">
+        <button id="btn-toggle-alarm" class="control-btn secondary">${alarmToggleLabel}</button>
         <button id="btn-prev-weeks" class="control-btn">⬆ 이전 2주 보기</button>
         <button id="btn-reset-weeks" class="control-btn secondary" ${startOffsetWeeks === 0 ? 'hidden' : ''}>↩ 이번주부터 보기</button>
         <button id="btn-toggle-ended" class="control-btn secondary">${hideEndedLectures ? '👁️ 종료된 일정 표시' : '👁️ 종료된 일정 숨기기'}</button>
@@ -1094,9 +1105,6 @@
       </div>
     `;
     calendarWrapper.appendChild(header);
-
-    const alarmSyncPanel = await createAlarmSyncPanel(lectures);
-    calendarWrapper.appendChild(alarmSyncPanel);
 
     // 2. Calendar Cells Grid
     const grid = document.createElement('div');
@@ -1235,11 +1243,7 @@
           btnDelete.addEventListener('click', async (e) => {
             e.preventDefault();
             if (confirm(`개인 일정 "${ps.title}"을(를) 삭제하시겠습니까?`)) {
-              const currentList = await new Promise(resolve => {
-                chrome.storage.local.get(['soma_personal_schedules'], (res) => {
-                  resolve(res.soma_personal_schedules || []);
-                });
-              });
+              const currentList = await loadPersonalSchedules();
               const updatedList = currentList.filter(item => item.id !== ps.id);
               await new Promise(resolve => {
                 chrome.storage.local.set({ soma_personal_schedules: updatedList }, resolve);
@@ -1247,6 +1251,7 @@
 
               // Re-render
               const freshLectures = await parseLecturesTable();
+              await syncSchedulesAfterLocalChange(freshLectures, updatedList);
               renderCalendar(freshLectures);
             }
           });
@@ -1336,6 +1341,13 @@
     document.getElementById('btn-toggle-ended').addEventListener('click', () => {
       hideEndedLectures = !hideEndedLectures;
       renderCalendar(lectures);
+    });
+
+    document.getElementById('btn-toggle-alarm').addEventListener('click', async () => {
+      await toggleAlarmNotifications({
+        lectures,
+        onChanged: () => renderCalendar(lectures)
+      });
     });
 
     document.getElementById('btn-add-personal').addEventListener('click', () => {
@@ -1617,6 +1629,7 @@
         injectModalDOM();
         const lectures = await parseLecturesTable();
         renderCalendar(lectures);
+        await syncSchedulesOnHistoryPageLoadIfConfigured(lectures);
       } catch (e) {
         console.error('Failed to initialize history dashboard:', e);
       }

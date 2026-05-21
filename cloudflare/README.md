@@ -4,9 +4,9 @@
 
 ## 역할
 
-- 확장 프로그램이 신청한 멘토링 일정을 `/api/schedules/sync`로 전송
+- 확장 프로그램이 신청한 멘토링 일정을 `/api/public/schedules/sync`로 전송
 - Worker가 D1에 일정과 알림 채널 설정 저장
-- Cron Trigger가 5분마다 실행되어 30분 전 / 1시간 전 디스코드 또는 텔레그램으로 알림 발송
+- Cron Trigger가 1분마다 실행되어 알림이 켜진 사용자에게 시작 1시간 전 Discord 알림 발송
 
 ## 준비
 
@@ -28,25 +28,21 @@ npx wrangler deploy
 
 ## 확장 프로그램 설정값
 
-확장 프로그램 대시보드의 `외부 알림 동기화` 섹션에 아래 값을 넣습니다.
+최초 1회만 아래 값을 저장합니다.
 
-- `Worker URL`: 배포된 Worker 주소
-- `API 토큰`: `wrangler secret put API_TOKEN`으로 넣은 값
-- `사용자 ID`: 본인 식별용 값
-- `Discord Webhook URL` 또는 `Telegram Bot Token + Chat ID`
-- 알림 시점: 30분 전, 1시간 전
+- `소마 계정 이메일`
+- `표시 이름`
+- `Discord Webhook URL`
 
 ## API 예시
 
 ```json
 {
-  "userId": "jaemin",
+  "userId": "user@soma.or.kr",
   "userLabel": "재민",
-  "notifyOffsetsMinutes": [60, 30],
+  "notifyEnabled": true,
   "notificationTargets": {
-    "discordWebhookUrl": "https://discord.com/api/webhooks/...",
-    "telegramBotToken": "",
-    "telegramChatId": ""
+    "discordWebhookUrl": "https://discord.com/api/webhooks/..."
   },
   "schedules": [
     {
@@ -68,5 +64,5 @@ npx wrangler deploy
 ## 주의
 
 - 확장 프로그램이 Cloudflare와 동기화한 일정만 외부 알림 대상입니다.
-- 일정이 바뀌면 접수 내역 페이지를 다시 열어 한 번 더 동기화해야 합니다.
-- Discord와 Telegram 둘 다 입력하면 두 채널 모두 발송합니다.
+- 알림은 `users.notify_enabled = 1`인 사용자에게만 발송됩니다.
+- 현재 알림 시점은 `시작 1시간 전 1회`로 고정입니다.

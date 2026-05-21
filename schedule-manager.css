@@ -91,132 +91,8 @@
   color: #ffffff;
 }
 
-#history-calendar .alarm-sync-panel {
-  margin-bottom: 24px;
-  padding: 18px 20px;
-  border: 1px solid #dbeafe;
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 32%),
-    linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
-}
-
-#history-calendar .alarm-sync-panel__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-#history-calendar .alarm-sync-panel__header h4 {
-  margin: 0 0 6px;
-  font-family: 'Outfit', sans-serif;
-  font-size: 17px;
-  color: #0f172a;
-}
-
-#history-calendar .alarm-sync-panel__header p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: #475569;
-  max-width: 780px;
-}
-
-#history-calendar .alarm-sync-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-#history-calendar .alarm-sync-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-#history-calendar .alarm-sync-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-#history-calendar .alarm-sync-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#history-calendar .alarm-sync-field--full {
-  grid-column: 1 / -1;
-}
-
-#history-calendar .alarm-sync-field span {
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-}
-
-#history-calendar .alarm-sync-field input {
-  font-family: inherit;
-  font-size: 13px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #bfdbfe;
-  background: rgba(255, 255, 255, 0.95);
-  color: #0f172a;
-}
-
-#history-calendar .alarm-sync-field input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-}
-
-#history-calendar .alarm-sync-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  font-size: 12px;
-  color: #334155;
-}
-
-#history-calendar .alarm-sync-options label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-#history-calendar .alarm-sync-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-
-#history-calendar .alarm-sync-status {
-  font-size: 12px;
-  color: #64748b;
-}
-
-#history-calendar .alarm-sync-status[data-tone="success"] {
-  color: #047857;
-}
-
-#history-calendar .alarm-sync-status[data-tone="error"] {
-  color: #b91c1c;
-}
-
-@media (max-width: 900px) {
-  #history-calendar .alarm-sync-grid {
-    grid-template-columns: 1fr;
-  }
+#history-calendar .alarm-toggle-btn {
+  white-space: nowrap;
 }
 
 /* 2. Calendar Grid */
@@ -497,6 +373,108 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(226, 232, 240, 0.8);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.alarm-settings-modal-content {
+  width: min(680px, calc(100vw - 32px));
+  max-width: min(680px, calc(100vw - 32px));
+  padding: 28px 28px 24px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.alarm-settings-modal-content .modal-header {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.alarm-settings-modal-content .modal-header h4 {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#alarm-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+#alarm-settings-form .alarm-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+#alarm-settings-form .alarm-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+#alarm-settings-form .alarm-settings-field--full {
+  grid-column: 1 / -1;
+}
+
+#alarm-settings-form .alarm-settings-field span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+#alarm-settings-form .alarm-settings-field input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+#alarm-settings-form .alarm-settings-field input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+}
+
+#alarm-settings-form .alarm-settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+#alarm-settings-form .control-btn {
+  min-width: 108px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 720px) {
+  .alarm-settings-modal-content {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    padding: 22px 18px 18px;
+    border-radius: 18px;
+  }
+
+  #alarm-settings-form .alarm-settings-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modal-header {

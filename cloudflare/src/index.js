@@ -2,23 +2,49 @@ const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8"
 };
 
+function buildCorsHeaders(request) {
+  const origin = request.headers.get("origin") || "*";
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "Content-Type, Authorization",
+    "access-control-max-age": "86400",
+    "vary": "Origin"
+  };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: buildCorsHeaders(request)
+      });
+    }
+
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "asm-alarm-worker" });
+      return json({ ok: true, service: "asm-alarm-worker" }, 200, request);
     }
 
     if (request.method === "POST" && url.pathname === "/api/schedules/sync") {
-      return handleScheduleSync(request, env);
+      return handleScheduleSync(request, env, { requireAuth: true, publicMode: false });
     }
 
     if (request.method === "POST" && url.pathname === "/api/notifications/test") {
-      return handleTestNotification(request, env);
+      return handleTestNotification(request, env, { requireAuth: true });
     }
 
-    return json({ error: "Not found" }, 404);
+    if (request.method === "POST" && url.pathname === "/api/public/schedules/sync") {
+      return handleScheduleSync(request, env, { requireAuth: false, publicMode: true });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/public/notifications/test") {
+      return handleTestNotification(request, env, { requireAuth: false });
+    }
+
+    return json({ error: "Not found" }, 404, request);
   },
 
   async scheduled(controller, env, ctx) {
@@ -26,68 +52,123 @@ export default {
   }
 };
 
-async function handleScheduleSync(request, env) {
+function isAuthorizedRequest(request, env) {
   const authHeader = request.headers.get("authorization") || "";
   const expectedToken = env.API_TOKEN;
-  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
-    return json({ error: "Unauthorized" }, 401);
+  return Boolean(expectedToken) && authHeader === `Bearer ${expectedToken}`;
+}
+
+async function handleScheduleSync(request, env, options = {}) {
+  if (options.requireAuth && !isAuthorizedRequest(request, env)) {
+    return json({ error: "Unauthorized" }, 401, request);
   }
 
   let payload;
   try {
     payload = await request.json();
   } catch {
-    return json({ error: "Invalid JSON body" }, 400);
+    return json({ error: "Invalid JSON body" }, 400, request);
   }
 
-  const validationError = validateSyncPayload(payload);
+  const validationError = validateSyncPayload(payload, options);
   if (validationError) {
-    return json({ error: validationError }, 400);
+    return json({ error: validationError }, 400, request);
   }
 
   const nowIso = new Date().toISOString();
   const userId = payload.userId.trim();
   const userLabel = (payload.userLabel || "").trim();
   const discordWebhookUrl = (payload.notificationTargets.discordWebhookUrl || "").trim();
-  const telegramBotToken = (payload.notificationTargets.telegramBotToken || "").trim();
-  const telegramChatId = (payload.notificationTargets.telegramChatId || "").trim();
-  const notifyOffsets = [...new Set(payload.notifyOffsetsMinutes)].sort((a, b) => b - a);
+  const notifyEnabled = Boolean(payload.notifyEnabled);
+  const desiredUser = {
+    display_name: userLabel || userId,
+    discord_webhook_url: discordWebhookUrl,
+    notify_enabled: notifyEnabled ? 1 : 0
+  };
 
-  await env.DB.prepare(`
-    INSERT INTO users (
-      id,
+  const existingUser = await env.DB.prepare(`
+    SELECT
       display_name,
       discord_webhook_url,
-      telegram_bot_token,
-      telegram_chat_id,
-      notify_offset_30_enabled,
-      notify_offset_60_enabled,
-      updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      display_name = excluded.display_name,
-      discord_webhook_url = excluded.discord_webhook_url,
-      telegram_bot_token = excluded.telegram_bot_token,
-      telegram_chat_id = excluded.telegram_chat_id,
-      notify_offset_30_enabled = excluded.notify_offset_30_enabled,
-      notify_offset_60_enabled = excluded.notify_offset_60_enabled,
-      updated_at = excluded.updated_at
+      notify_enabled
+    FROM users
+    WHERE id = ?
+    LIMIT 1
   `)
-    .bind(
-      userId,
-      userLabel || userId,
-      discordWebhookUrl,
-      telegramBotToken,
-      telegramChatId,
-      notifyOffsets.includes(30) ? 1 : 0,
-      notifyOffsets.includes(60) ? 1 : 0,
-      nowIso
-    )
-    .run();
+    .bind(userId)
+    .first();
+
+  if (
+    !existingUser ||
+    existingUser.display_name !== desiredUser.display_name ||
+    (existingUser.discord_webhook_url || "") !== desiredUser.discord_webhook_url ||
+    Number(existingUser.notify_enabled || 0) !== desiredUser.notify_enabled
+  ) {
+    await env.DB.prepare(`
+      INSERT INTO users (
+        id,
+        display_name,
+        discord_webhook_url,
+        notify_enabled,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        display_name = excluded.display_name,
+        discord_webhook_url = excluded.discord_webhook_url,
+        notify_enabled = excluded.notify_enabled,
+        updated_at = excluded.updated_at
+    `)
+      .bind(
+        userId,
+        desiredUser.display_name,
+        desiredUser.discord_webhook_url,
+        desiredUser.notify_enabled,
+        nowIso
+      )
+      .run();
+  }
+
+  const existingRowsResult = await env.DB.prepare(`
+    SELECT
+      source_event_id,
+      title,
+      lecture_type,
+      mentor_name,
+      starts_at,
+      ends_at,
+      location,
+      status,
+      detail_url,
+      cancelable
+    FROM schedules
+    WHERE user_id = ?
+  `)
+    .bind(userId)
+    .all();
+
+  const existingRows = existingRowsResult.results || [];
+  const existingRowsById = new Map(existingRows.map((row) => [row.source_event_id, row]));
 
   const incomingIds = [];
+  let insertedCount = 0;
+  let updatedCount = 0;
   for (const schedule of payload.schedules) {
     incomingIds.push(schedule.sourceEventId);
+    const existingRow = existingRowsById.get(schedule.sourceEventId);
+    const isUnchanged = existingRow &&
+      existingRow.title === schedule.title &&
+      (existingRow.lecture_type || "") === (schedule.lectureType || "") &&
+      (existingRow.mentor_name || "") === (schedule.mentorName || "") &&
+      existingRow.starts_at === schedule.startsAt &&
+      existingRow.ends_at === schedule.endsAt &&
+      (existingRow.location || "") === (schedule.location || "") &&
+      (existingRow.status || "") === (schedule.status || "") &&
+      (existingRow.detail_url || "") === (schedule.detailUrl || "") &&
+      Number(existingRow.cancelable || 0) === (schedule.cancelable ? 1 : 0);
+
+    if (isUnchanged) {
+      continue;
+    }
 
     await env.DB.prepare(`
       INSERT INTO schedules (
@@ -133,27 +214,24 @@ async function handleScheduleSync(request, env) {
         nowIso
       )
       .run();
+
+    if (existingRow) {
+      updatedCount += 1;
+    } else {
+      insertedCount += 1;
+    }
   }
 
-  const existingRows = await env.DB.prepare(`
-    SELECT source_event_id
-    FROM schedules
-    WHERE user_id = ? AND is_active = 1
-  `)
-    .bind(userId)
-    .all();
-
-  const deactivateIds = (existingRows.results || [])
+  const deleteIds = existingRows
     .map((row) => row.source_event_id)
     .filter((sourceEventId) => !incomingIds.includes(sourceEventId));
 
-  for (const sourceEventId of deactivateIds) {
+  for (const sourceEventId of deleteIds) {
     await env.DB.prepare(`
-      UPDATE schedules
-      SET is_active = 0, updated_at = ?
+      DELETE FROM schedules
       WHERE user_id = ? AND source_event_id = ?
     `)
-      .bind(nowIso, userId, sourceEventId)
+      .bind(userId, sourceEventId)
       .run();
   }
 
@@ -161,27 +239,27 @@ async function handleScheduleSync(request, env) {
     ok: true,
     message: `일정 ${payload.schedules.length}건 동기화 완료`,
     syncedCount: payload.schedules.length,
-    deactivatedCount: deactivateIds.length
-  });
+    insertedCount,
+    updatedCount,
+    deletedCount: deleteIds.length
+  }, 200, request);
 }
 
-async function handleTestNotification(request, env) {
-  const authHeader = request.headers.get("authorization") || "";
-  const expectedToken = env.API_TOKEN;
-  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
-    return json({ error: "Unauthorized" }, 401);
+async function handleTestNotification(request, env, options = {}) {
+  if (options.requireAuth && !isAuthorizedRequest(request, env)) {
+    return json({ error: "Unauthorized" }, 401, request);
   }
 
   let payload;
   try {
     payload = await request.json();
   } catch {
-    return json({ error: "Invalid JSON body" }, 400);
+    return json({ error: "Invalid JSON body" }, 400, request);
   }
 
   const userId = (payload?.userId || "").trim();
   if (!userId) {
-    return json({ error: "userId is required" }, 400);
+    return json({ error: "userId is required" }, 400, request);
   }
 
   const candidateRows = await env.DB.prepare(`
@@ -196,22 +274,20 @@ async function handleTestNotification(request, env) {
       schedules.location,
       schedules.detail_url,
       users.display_name,
-      users.discord_webhook_url,
-      users.telegram_bot_token,
-      users.telegram_chat_id
+      users.discord_webhook_url
     FROM schedules
     JOIN users ON users.id = schedules.user_id
     WHERE schedules.user_id = ?
       AND schedules.is_active = 1
-      AND schedules.starts_at >= ?
-    ORDER BY schedules.starts_at ASC
+      AND datetime(schedules.starts_at) >= datetime(?)
+    ORDER BY datetime(schedules.starts_at) ASC
   `)
     .bind(userId, new Date().toISOString())
     .all();
 
   const rows = candidateRows.results || [];
   if (rows.length === 0) {
-    return json({ error: "동기화된 예정 일정이 없습니다." }, 404);
+    return json({ error: "동기화된 예정 일정이 없습니다." }, 404, request);
   }
 
   const tomorrowKstDate = getKstDateString(new Date(Date.now() + 24 * 60 * 60 * 1000));
@@ -219,7 +295,7 @@ async function handleTestNotification(request, env) {
 
   const delivered = await sendTestNotification(targetRow);
   if (!delivered) {
-    return json({ error: "알림 채널 설정이 없습니다." }, 400);
+    return json({ error: "알림 채널 설정이 없습니다." }, 400, request);
   }
 
   return json({
@@ -227,26 +303,33 @@ async function handleTestNotification(request, env) {
     message: `테스트 알림을 발송했습니다: ${targetRow.title}`,
     title: targetRow.title,
     startsAt: targetRow.starts_at
-  });
+  }, 200, request);
 }
 
-function validateSyncPayload(payload) {
+function validateSyncPayload(payload, options = {}) {
   if (!payload || typeof payload !== "object") return "Payload is required";
   if (!payload.userId || typeof payload.userId !== "string") return "userId is required";
   if (!Array.isArray(payload.schedules)) return "schedules must be an array";
-  if (!Array.isArray(payload.notifyOffsetsMinutes) || payload.notifyOffsetsMinutes.length === 0) {
-    return "notifyOffsetsMinutes must include at least one item";
+  if (payload.schedules.length > 200) return "schedules must not exceed 200 items";
+  if (typeof payload.notifyEnabled !== "boolean") {
+    return "notifyEnabled must be a boolean";
   }
   if (!payload.notificationTargets || typeof payload.notificationTargets !== "object") {
     return "notificationTargets is required";
   }
 
-  const hasDiscord = Boolean((payload.notificationTargets.discordWebhookUrl || "").trim());
-  const hasTelegram = Boolean((payload.notificationTargets.telegramBotToken || "").trim()) &&
-    Boolean((payload.notificationTargets.telegramChatId || "").trim());
+  const discordWebhookUrl = (payload.notificationTargets.discordWebhookUrl || "").trim();
+  const hasDiscord = Boolean(discordWebhookUrl);
+  if (options.publicMode && !/^https:\/\/discord\.com\/api\/webhooks\/[^/\s]+\/[^/\s]+$/.test(discordWebhookUrl)) {
+    return "A valid Discord webhook URL is required";
+  }
 
-  if (!hasDiscord && !hasTelegram) {
-    return "At least one notification target is required";
+  if (options.publicMode && !hasDiscord) {
+    return "A Discord webhook URL is required";
+  }
+
+  if (!options.publicMode && !hasDiscord) {
+    return "A Discord webhook URL is required";
   }
 
   for (const schedule of payload.schedules) {
@@ -276,34 +359,30 @@ async function processPendingNotifications(env, scheduledTime) {
       schedules.detail_url,
       users.display_name,
       users.discord_webhook_url,
-      users.telegram_bot_token,
-      users.telegram_chat_id,
-      users.notify_offset_30_enabled,
-      users.notify_offset_60_enabled
+      users.notify_enabled
     FROM schedules
     JOIN users ON users.id = schedules.user_id
     WHERE schedules.is_active = 1
-      AND schedules.starts_at >= ?
-      AND schedules.starts_at <= ?
+      AND datetime(schedules.starts_at) >= datetime(?)
+      AND datetime(schedules.starts_at) <= datetime(?)
   `)
     .bind(lowerBound, upperBound)
     .all();
 
   for (const row of rows.results || []) {
-    const offsets = [];
-    if (row.notify_offset_60_enabled) offsets.push(60);
-    if (row.notify_offset_30_enabled) offsets.push(30);
-
-    for (const offsetMinutes of offsets) {
-      const triggerTime = new Date(new Date(row.starts_at).getTime() - offsetMinutes * 60 * 1000);
-      const windowEnd = new Date(triggerTime.getTime() + 10 * 60 * 1000);
-
-      if (now < triggerTime || now >= windowEnd) {
-        continue;
-      }
-
-      await deliverNotification(env, row, offsetMinutes);
+    if (!row.notify_enabled) {
+      continue;
     }
+
+    const offsetMinutes = 60;
+    const triggerTime = new Date(new Date(row.starts_at).getTime() - offsetMinutes * 60 * 1000);
+    const windowEnd = new Date(triggerTime.getTime() + 10 * 60 * 1000);
+
+    if (now < triggerTime || now >= windowEnd) {
+      continue;
+    }
+
+    await deliverNotification(env, row, offsetMinutes);
   }
 }
 
@@ -328,25 +407,6 @@ async function deliverNotification(env, scheduleRow, offsetMinutes) {
       }
     }
   }
-
-  if (scheduleRow.telegram_bot_token && scheduleRow.telegram_chat_id) {
-    const logged = await hasNotificationLog(env, scheduleRow.user_id, scheduleRow.source_event_id, offsetMinutes, "telegram");
-    if (!logged) {
-      const response = await fetch(`https://api.telegram.org/bot${scheduleRow.telegram_bot_token}/sendMessage`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          chat_id: scheduleRow.telegram_chat_id,
-          text: bodyText,
-          disable_web_page_preview: true
-        })
-      });
-
-      if (response.ok) {
-        await insertNotificationLog(env, scheduleRow.user_id, scheduleRow.source_event_id, offsetMinutes, "telegram");
-      }
-    }
-  }
 }
 
 async function sendTestNotification(scheduleRow) {
@@ -361,19 +421,6 @@ async function sendTestNotification(scheduleRow) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         content: bodyText
-      })
-    });
-    if (response.ok) delivered = true;
-  }
-
-  if (scheduleRow.telegram_bot_token && scheduleRow.telegram_chat_id) {
-    const response = await fetch(`https://api.telegram.org/bot${scheduleRow.telegram_bot_token}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: scheduleRow.telegram_chat_id,
-        text: bodyText,
-        disable_web_page_preview: true
       })
     });
     if (response.ok) delivered = true;
@@ -457,9 +504,12 @@ async function insertNotificationLog(env, userId, sourceEventId, offsetMinutes, 
     .run();
 }
 
-function json(data, status = 200) {
+function json(data, status = 200, request = null) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: JSON_HEADERS
+    headers: {
+      ...JSON_HEADERS,
+      ...(request ? buildCorsHeaders(request) : {})
+    }
   });
 }

@@ -2,10 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   discord_webhook_url TEXT DEFAULT '',
-  telegram_bot_token TEXT DEFAULT '',
-  telegram_chat_id TEXT DEFAULT '',
-  notify_offset_30_enabled INTEGER NOT NULL DEFAULT 1,
-  notify_offset_60_enabled INTEGER NOT NULL DEFAULT 1,
+  notify_enabled INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL
 );
 
