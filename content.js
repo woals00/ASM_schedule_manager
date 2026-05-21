@@ -716,7 +716,7 @@
     const prevBtn = document.createElement("button");
     prevBtn.type = "button";
     prevBtn.className = "asm-panel-nav-btn";
-    prevBtn.textContent = "‹ 이전 달";
+    prevBtn.textContent = "‹ 이전달";
     prevBtn.title = "이전 달";
     prevBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -741,7 +741,7 @@
     const nextBtn = document.createElement("button");
     nextBtn.type = "button";
     nextBtn.className = "asm-panel-nav-btn";
-    nextBtn.textContent = "다음 달 ›";
+    nextBtn.textContent = "다음달 ›";
     nextBtn.title = "다음 달";
     nextBtn.addEventListener("click", (e) => {
       e.preventDefault();

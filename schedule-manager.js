@@ -775,9 +775,9 @@
         <span class="calendar-subtitle">접수한 일정과 내 개인 일정을 함께 모아 관리합니다.</span>
       </div>
       <div class="calendar-nav-group">
-        <button id="btn-prev-weeks" class="control-btn nav-btn">‹ 2주 전</button>
+        <button id="btn-prev-weeks" class="control-btn nav-btn">◀ 2주 전</button>
         <button id="btn-today" class="control-btn nav-btn nav-today">오늘</button>
-        <button id="btn-next-weeks" class="control-btn nav-btn">2주 후 ›</button>
+        <button id="btn-next-weeks" class="control-btn nav-btn">2주 후 ▶</button>
       </div>
       <div class="calendar-actions">
         <button id="btn-add-personal" class="control-btn accent">+ 개인 일정 추가</button>
