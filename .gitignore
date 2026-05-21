@@ -1,1 +1,5 @@
 .claude/
+cloudflare/wrangler.toml
+cloudflare/node_modules/
+cloudflare/.wrangler/
+cloudflare/package-lock.json

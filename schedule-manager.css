@@ -91,6 +91,134 @@
   color: #ffffff;
 }
 
+#history-calendar .alarm-sync-panel {
+  margin-bottom: 24px;
+  padding: 18px 20px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 32%),
+    linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+}
+
+#history-calendar .alarm-sync-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+#history-calendar .alarm-sync-panel__header h4 {
+  margin: 0 0 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 17px;
+  color: #0f172a;
+}
+
+#history-calendar .alarm-sync-panel__header p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 780px;
+}
+
+#history-calendar .alarm-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#history-calendar .alarm-sync-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#history-calendar .alarm-sync-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+#history-calendar .alarm-sync-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#history-calendar .alarm-sync-field--full {
+  grid-column: 1 / -1;
+}
+
+#history-calendar .alarm-sync-field span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+#history-calendar .alarm-sync-field input {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+}
+
+#history-calendar .alarm-sync-field input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+#history-calendar .alarm-sync-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: #334155;
+}
+
+#history-calendar .alarm-sync-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#history-calendar .alarm-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+#history-calendar .alarm-sync-status {
+  font-size: 12px;
+  color: #64748b;
+}
+
+#history-calendar .alarm-sync-status[data-tone="success"] {
+  color: #047857;
+}
+
+#history-calendar .alarm-sync-status[data-tone="error"] {
+  color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  #history-calendar .alarm-sync-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* 2. Calendar Grid */
 #history-calendar .calendar-grid {
   display: grid;
