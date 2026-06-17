@@ -32,5 +32,4 @@ export interface Lecture extends RawLectureRow {
   approvalStatus: string;
   deadlineStatus: string;
   cancelAllowed: boolean;
-  cancelPolicyReason: string;
 }

@@ -209,7 +209,7 @@ export function LectureCard({
           ) : (
             <button
               className={cx(styles.cancelBtn, styles.unavailable)}
-              title={ended ? '종료된 일정이므로 취소 불가' : lec.cancelPolicyReason}
+              title={ended ? '종료된 일정이므로 취소 불가' : 'SOMA 에 취소 버튼이 없는 일정입니다 (취소 기간 경과 또는 현재 보고 있지 않은 페이지의 신청)'}
               disabled
             >
               <Icon name="ban" size={12} />

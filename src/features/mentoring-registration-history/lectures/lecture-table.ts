@@ -1,8 +1,6 @@
 // Parse SOMA mentoring registration history list, fetch additional pages, merge details.
 
 import { isLectureEnded } from '@shared/date/date-time';
-import { getCancelPolicyReason } from '@shared/soma/location';
-import { isLectureCancelable } from './cancel';
 import {
   fetchLectureDetails,
   formatApprovalStatus,
@@ -62,8 +60,13 @@ export function extractRawRowsFromDoc(doc: Document, isCurrentPage: boolean): Ra
     const status = (cells[6].textContent || '').trim();
     const approval = (cells[7].textContent || '').trim();
 
-    // Cancel button only exists in live DOM of the current page
-    const hasCancelButton = isCurrentPage ? !!row.querySelector('[onclick*="delDate"]') : false;
+    // SOMA renders the cancel link as <a href="javascript:delDate(...)"> only on
+    // rows it considers cancelable. Detect it on the current page only — cancelling
+    // requires clicking that live-DOM link (see triggerCancellation), which can't
+    // reach rows fetched from other pages.
+    const hasCancelButton = isCurrentPage
+      ? !!row.querySelector('a[href*="delDate"], a[onclick*="delDate"]')
+      : false;
 
     // Mentor-deleted lectures show plain "삭제" text in a trailing action cell
     // (no button/anchor) — distinct from the user's own delDate cancel button.
@@ -168,7 +171,7 @@ async function fetchAllRawRows(): Promise<RawLectureRow[]> {
 
 /**
  * 신청내역 전 페이지를 파싱하고 상세 페이지 정보를 병합해 Lecture 목록을 만든다.
- * 일시·멘토·승인은 상세 우선·리스트 폴백이고, 취소 가능 여부는 버튼 존재 + 마감 정책으로 판정한다.
+ * 일시·멘토·승인은 상세 우선·리스트 폴백이고, 취소 가능 여부는 SOMA 의 취소 링크 존재로만 판정한다.
  */
 export async function parseLecturesTable(): Promise<Lecture[]> {
   const allRaw = await fetchAllRawRows();
@@ -205,8 +208,7 @@ export async function parseLecturesTable(): Promise<Lecture[]> {
         details.approvalStatus === '정보 없음' ? raw.approval : details.approvalStatus
       ),
       deadlineStatus: formatDeadlineStatus(details.deadlineStatus, `${raw.status} ${raw.approval}`, ended),
-      cancelAllowed: raw.hasCancelButton && !ended && isLectureCancelable(resolvedDateTimeText, details.location),
-      cancelPolicyReason: getCancelPolicyReason(details.location),
+      cancelAllowed: raw.hasCancelButton,
     });
   }
 

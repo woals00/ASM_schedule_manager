@@ -1,28 +1,14 @@
-import { getLectureDateBounds } from '@shared/date/date-time';
-import { getCancelDeadlineHours } from '@shared/soma/location';
-
-export function isLectureCancelable(
-  dateTimeText: string | undefined | null,
-  locationText: string | undefined | null
-): boolean {
-  const bounds = getLectureDateBounds(dateTimeText);
-  if (!bounds) return false;
-
-  const deadlineHours = getCancelDeadlineHours(locationText);
-  const deadlineTime = new Date(bounds.start.getTime() - deadlineHours * 60 * 60 * 1000);
-  return new Date() < deadlineTime;
-}
-
 /**
- * 강의 취소를 트리거한다. 전용 API 가 없어 SOMA 표에서 해당 행의 delDate 버튼을
- * 찾아 프로그램적으로 클릭한다. 버튼을 못 찾으면 수동 취소를 안내하는 alert 를 띄운다.
+ * 강의 취소를 트리거한다. 전용 API 가 없어 SOMA 표에서 해당 행의 delDate 링크를
+ * 찾아 프로그램적으로 클릭한다. 링크를 못 찾으면 수동 취소를 안내하는 alert 를 띄운다.
+ * delDate 는 onclick 이 아니라 href="javascript:delDate(...)" 에 있다.
  */
 export function triggerCancellation(somaLectureId: string): void {
   const rows = document.querySelectorAll('.boardlist table tbody tr');
   for (const row of rows) {
     const a = row.querySelector<HTMLAnchorElement>('.tit.popuser a');
     if (a && (a.getAttribute('href') || '').includes(`qustnrSn=${somaLectureId}`)) {
-      const delBtn = row.querySelector<HTMLElement>('[onclick*="delDate"]');
+      const delBtn = row.querySelector<HTMLElement>('a[href*="delDate"], a[onclick*="delDate"]');
       if (delBtn) {
         delBtn.click();
         return;
