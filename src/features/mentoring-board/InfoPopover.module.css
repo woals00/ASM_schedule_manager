@@ -1,0 +1,96 @@
+.asm-panel-info-wrap {
+  position: relative;
+}
+
+.asm-panel-info-btn {
+  background: #086DB7;
+  border: 1px solid #086DB7;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asm-panel-info-btn:hover {
+  background: #065a96;
+  border-color: #065a96;
+}
+
+.asm-panel-info-popover {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 9999;
+  width: 260px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.asm-panel-info-popover--open,
+.asm-panel-info-wrap:hover .asm-panel-info-popover {
+  display: block;
+}
+
+.asm-info-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #1e293b;
+}
+
+.asm-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2px;
+}
+
+.asm-info-table td {
+  padding: 3px 0;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.asm-info-table td:first-child {
+  color: #6b7280;
+}
+
+.asm-info-table td:last-child {
+  text-align: right;
+  color: #1e293b;
+}
+
+.asm-info-divider {
+  border-top: 1px solid #e2e8f0;
+  margin: 10px 0;
+}
+
+.asm-info-subtitle {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #1e293b;
+}
+
+.asm-info-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  color: #6b7280;
+}
+
+.asm-info-list li {
+  margin-bottom: 4px;
+}

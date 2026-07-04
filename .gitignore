@@ -1,5 +1,17 @@
 .DS_Store
 .claude/
+.idea/
+node_modules/
+dist/
+*.local
 cloudflare/node_modules/
 cloudflare/.wrangler/
 cloudflare/wrangler.toml
+
+# Chrome extension signing key (do not commit — losing it changes the extension ID)
+asm-ext-key.pem
+asm-ext-pub.der
+asm-ext-pub.b64
+
+# Private project notes (do not commit)
+CLAUDE.local.md

@@ -1,0 +1,310 @@
+/* Cell grid + date layout, plus card primitives (.calendar-lecture base,
+   .info-group, .text-title, .text-type-badge, .info-row, .button-group,
+   .export-group, .asm-export-btn) and the ended state used by LectureCard. */
+
+/* 2. Calendar Grid — cross/table style */
+:global(#registration-history-calendar) .calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  border-top: 1.5px solid #cbd5e1;
+  border-left: 1.5px solid #cbd5e1;
+}
+
+/* Weekday Header Row */
+:global(#registration-history-calendar) .calendar-weekday-header {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 8px 4px;
+  background: #f8fafc;
+  border-right: 1.5px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
+  letter-spacing: 0.5px;
+}
+
+:global(#registration-history-calendar) .calendar-weekday-header.weekend {
+  color: #ef4444;
+  background: #f8fafc;
+}
+
+/* Calendar Cells */
+:global(#registration-history-calendar) .calendar-cell {
+  background: #ffffff;
+  border-right: 1.5px solid #e2e8f0;
+  border-bottom: 1.5px solid #e2e8f0;
+  border-radius: 0;
+  padding: 8px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+:global(#registration-history-calendar) .calendar-cell:hover {
+  background: #f8fafc;
+}
+
+:global(#registration-history-calendar) .calendar-cell.past-day {
+  background: #f1f5f9;
+}
+
+:global(#registration-history-calendar) .calendar-cell.past-day:hover {
+  background: #e2e8f0;
+}
+
+:global(#registration-history-calendar) .calendar-cell.past-day .calendar-date {
+  color: #94a3b8;
+}
+
+:global(#registration-history-calendar) .calendar-cell.past-day .calendar-lecture,
+:global(#registration-history-calendar) .calendar-cell.past-day .asm-event-card {
+  opacity: 0.75;
+}
+
+/* Today Cell Highlight */
+:global(#registration-history-calendar) .calendar-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+:global(#registration-history-calendar) .calendar-date-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+:global(#registration-history-calendar) .today-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #086DB7;
+  border: 1.5px solid #086DB7;
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 16px;
+}
+
+:global(#registration-history-calendar) .today-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #086DB7;
+}
+
+/* 3. Event Cards */
+:global(#registration-history-calendar) .calendar-lecture {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 12px;
+  transition: box-shadow 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+:global(#registration-history-calendar) .calendar-lecture:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 카테고리 닷 인디케이터 */
+:global(#registration-history-calendar) .calendar-lecture .text-title::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+/* Dot Colors and pastel backgrounds depending on types */
+
+/* Past Events styled with ended state. */
+:global(#registration-history-calendar) .calendar-lecture.ended {
+  opacity: 0.62;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  filter: grayscale(35%);
+}
+
+:global(#registration-history-calendar) .calendar-lecture.ended:hover {
+  opacity: 0.72;
+  transform: none;
+  box-shadow: none;
+}
+
+:global(#registration-history-calendar) .calendar-lecture.ended .text-title::before {
+  background: #94a3b8;
+}
+
+
+:global(#registration-history-calendar) .calendar-lecture.ended .text-title,
+:global(#registration-history-calendar) .calendar-lecture.ended .info-row,
+:global(#registration-history-calendar) .calendar-lecture.ended .info-row strong,
+:global(#registration-history-calendar) .calendar-lecture.ended .info-meta {
+  color: #94a3b8;
+}
+
+:global(#registration-history-calendar) .calendar-lecture.ended .text-type-badge {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+:global(#registration-history-calendar) .calendar-lecture.ended .button-group button {
+  opacity: 0.75;
+}
+
+/* Card primitives used by LectureCard. */
+:global(#registration-history-calendar) .info-group {
+  text-decoration: none !important;
+  color: inherit !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:global(#registration-history-calendar) .text-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+:global(#registration-history-calendar) .text-type-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  margin-bottom: 2px;
+}
+
+
+:global(#registration-history-calendar) .info-row {
+  color: #475569;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+:global(#registration-history-calendar) .info-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+:global(#registration-history-calendar) .info-meta {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:global(#registration-history-calendar) .desc-row {
+  white-space: normal;
+  color: #64748b;
+  font-style: italic;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* 4. Action Buttons Inside Cards — shared button-group + export-group. */
+:global(#registration-history-calendar) .button-group {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+  border-top: 1px dashed rgba(226, 232, 240, 0.8);
+  padding-top: 4px;
+}
+
+:global(#registration-history-calendar) .button-group button {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 0;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 5px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+:global(#registration-history-calendar) .button-group button:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+
+:global(#registration-history-calendar) .export-group {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+:global(#registration-history-calendar) .export-group :global(.asm-export-btn) {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 0;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+:global(#registration-history-calendar) .export-group :global(.asm-export-btn):hover {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border-color: #c7d2fe;
+}
+
+:global(#registration-history-calendar) .calendar-lecture.ended .export-group :global(.asm-export-btn) {
+  opacity: 0.6;
+}
+
+
+/* Calendar Cell date header row */
+:global(#registration-history-calendar) .calendar-date-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 4px;
+}

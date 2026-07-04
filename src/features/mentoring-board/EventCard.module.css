@@ -1,0 +1,284 @@
+.asm-event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-radius: 5px;
+  padding: 8px 10px;
+  min-width: 200px;
+  max-width: 300px;
+  flex: 1 1 200px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  transition: box-shadow 0.15s, transform 0.15s;
+  box-sizing: border-box;
+}
+
+.asm-event-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.asm-event-card[role="link"] {
+  cursor: pointer;
+}
+
+.asm-event-card[role="link"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+}
+
+.asm-event-card .asm-card-title::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  vertical-align: middle;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+
+.asm-event-card.asm-card-open.asm-cat-MRC010 {
+  background: #e6eef8;
+}
+
+.asm-event-card.asm-card-open.asm-cat-MRC010 .asm-card-title::before {
+  background: #086DB7;
+}
+
+.asm-event-card.asm-card-open.asm-cat-MRC020 {
+  background: #e0faf4;
+}
+
+.asm-event-card.asm-card-open.asm-cat-MRC020 .asm-card-title::before {
+  background: #00D3A9;
+}
+
+.asm-event-card.asm-card-gray {
+  background: #f8fafc;
+  opacity: 0.6;
+}
+
+.asm-event-card.asm-card-gray .asm-card-title::before {
+  background: #cbd5e1;
+}
+
+.asm-event-card.asm-card-conflict {
+  border-width: 2px;
+  border-color: #ff0000d1;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.14);
+}
+
+.asm-event-card.asm-card-enrolled {
+  border-width: 2px;
+  border-color: #A78BFAd1;
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.3);
+}
+
+.asm-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.asm-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.asm-cat-badge.asm-cat-MRC010 {
+  background: #ccd8f0;
+  color: #086DB7;
+}
+
+.asm-cat-badge.asm-cat-MRC020 {
+  background: #b8f5e8;
+  color: #007a5e;
+}
+
+.asm-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.asm-badge.asm-online {
+  background: #b8e5f7;
+  color: #086DB7;
+}
+
+.asm-badge.asm-offline {
+  background: #fde4d8;
+  color: #b05030;
+}
+
+.asm-badge.asm-open-badge {
+  background: #fefccb;
+  color: #7a7a00;
+}
+
+.asm-badge.asm-closed {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.asm-badge.asm-done {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.asm-badge.asm-conflict {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.asm-badge.asm-enrolled {
+  background: #EDE9FE;
+  color: #6D28D9;
+}
+
+.asm-cap {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.asm-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.5;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  flex: 1;
+}
+
+.asm-event-card.asm-card-gray .asm-card-title {
+  color: #94a3b8;
+}
+
+.asm-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.asm-card-author {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 400;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.asm-card-author::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -2px;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg%20class%3D%22lucide%20lucide-user%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23475569%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20%3E%20%3Cpath%20d%3D%22M19%2021v-2a4%204%200%200%200-4-4H9a4%204%200%200%200-4%204v2%22%20%2F%3E%20%3Ccircle%20cx%3D%2212%22%20cy%3D%227%22%20r%3D%224%22%20%2F%3E%20%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.asm-card-footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.asm-card-time {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.asm-card-link {
+  font-size: 11px;
+  color: #086DB7;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.asm-card-link:hover {
+  text-decoration: underline;
+}
+
+.asm-event-card.asm-card-gray .asm-card-link {
+  color: #94a3b8;
+}
+
+.asm-card-export-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(226, 232, 240, 0.8);
+}
+
+.asm-card-export-row :global(.asm-export-btn) {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 0;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.asm-card-export-row :global(.asm-export-btn):hover {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border-color: #c7d2fe;
+}
+
+.asm-event-card.asm-card-gray .asm-card-export-row :global(.asm-export-btn) {
+  opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  .asm-event-card {
+    min-width: 160px;
+    max-width: none;
+    flex: 1 1 calc(50% - 5px);
+  }
+}
+
+@media (max-width: 700px) {
+  .asm-event-card {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .asm-card-footer-bottom {
+    align-items: flex-start;
+  }
+
+  .asm-card-time,
+  .asm-card-link,
+  .asm-cap {
+    white-space: normal;
+  }
+}

@@ -1,0 +1,112 @@
+/* 1. Dashboard Header Styling */
+:global(#registration-history-calendar) .calendar-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+:global(#registration-history-calendar) .calendar-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+:global(#registration-history-calendar) .calendar-title-group h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:global(#registration-history-calendar) .calendar-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Navigation Group: 2주 전 | 오늘 | 2주 후 */
+:global(#registration-history-calendar) .calendar-nav-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+:global(#registration-history-calendar) .control-btn.nav-btn {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid #d1d5db;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+:global(#registration-history-calendar) .control-btn.nav-btn:last-child {
+  border-right: none;
+}
+
+:global(#registration-history-calendar) .control-btn.nav-btn:hover {
+  background: #f1f5f9;
+  transform: none;
+}
+
+:global(#registration-history-calendar) .control-btn.nav-btn.nav-today {
+  background: #e3f5fc;
+  color: #086DB7;
+  font-weight: 700;
+}
+
+:global(#registration-history-calendar) .control-btn.nav-btn.nav-today:hover {
+  background: #b8e5f7;
+}
+
+:global(#registration-history-calendar) .control-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+:global(#registration-history-calendar) .control-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+:global(#registration-history-calendar) .control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:global(#registration-history-calendar) .control-btn.secondary {
+  background: #f1f5f9;
+  border: none;
+  color: #475569;
+}
+
+:global(#registration-history-calendar) .control-btn.secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}

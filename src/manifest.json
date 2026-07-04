@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "소마 멘토링 캘린더 개선",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr0ys7x8Xo1LkZAlqxUwK7nO1PkU5lpnZC4l5xDM160dmwwQ3JyCm5JrLaieiF/HJC0WIC0mc3FfzNCQBI3lSFhNr0870S1TFhq130MNpsnAgUD7nYMbT4RDEYtmhvgPlcxhIa5tkEZDEA9av3y4WLiLrnA940rzN4kcmMylzWwC8o0mWNEH/ATs4om9q4PE/x/w3SqrC4PVwEzpPxMVemlYNfhtE8BgaVV+8f88LAdnB23rtxDs1OjRhh8iPEflpilj851GfJkZ4jRWvjUwBGdklVoUb1m09JpqSwGcuLfwNgE6J/2ZV1Lj+ek1TD0Oc5YT1PGJNcBqRF/01IRUeqQIDAQAB",
+  "icons": {
+    "16": "icon/16.png",
+    "32": "icon/32.png",
+    "48": "icon/48.png",
+    "128": "icon/128.png"
+  },
+  "permissions": [
+    "storage",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://*.swmaestro.ai/*",
+    "https://*.swmaestro.org/*",
+    "https://www.googleapis.com/*",
+    "https://oauth2.googleapis.com/*",
+    "https://accounts.google.com/*"
+  ],
+  "background": {
+    "service_worker": "src/entrypoints/background.ts"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.swmaestro.ai/*"
+      ],
+      "js": ["src/entrypoints/calendar-export.ts", "src/entrypoints/content/index.tsx"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.swmaestro.org/busan/sw/mypage/userAnswer/history.do*",
+        "*://*.swmaestro.ai/busan/sw/mypage/userAnswer/history.do*",
+        "*://*.swmaestro.org/sw/mypage/userAnswer/history.do*",
+        "*://*.swmaestro.ai/sw/mypage/userAnswer/history.do*",
+        "*://*.swmaestro.org/busan/sw/mypage/mentoLec/view.do*",
+        "*://*.swmaestro.ai/busan/sw/mypage/mentoLec/view.do*",
+        "*://*.swmaestro.org/sw/mypage/mentoLec/view.do*",
+        "*://*.swmaestro.ai/sw/mypage/mentoLec/view.do*"
+      ],
+      "js": [
+        "src/entrypoints/calendar-export.ts",
+        "src/entrypoints/mentoring-registration-history/index.ts"
+      ],
+      "css": [
+        "src/features/mentoring-registration-history/schedule-manager.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icon/16.png",
+      "32": "icon/32.png"
+    },
+    "default_title": "소마 멘토링 캘린더 개선",
+    "default_popup": "src/entrypoints/popup/popup.html"
+  },
+  "oauth2": {
+    "client_id": "801617669380-u1ln17rc0fe755mcfl6k1f08itushe26.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar.events.readonly"
+    ]
+  }
+}

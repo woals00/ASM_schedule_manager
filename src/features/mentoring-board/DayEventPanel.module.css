@@ -1,0 +1,54 @@
+.asm-event-panel-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.asm-event-panel-date {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.asm-event-panel-cnt {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.asm-cards-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.asm-loading-spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #00B5C7;
+  border-radius: 50%;
+  animation: asm-spin 0.75s linear infinite;
+}
+
+.asm-day-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@keyframes asm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .asm-day-cards {
+    gap: 10px;
+  }
+}

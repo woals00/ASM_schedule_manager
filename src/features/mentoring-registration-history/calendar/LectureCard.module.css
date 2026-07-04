@@ -1,0 +1,289 @@
+/* Lecture-card-only variants: special / mentoring backgrounds, the
+   not-in-google-calendar warning, type-badge colors, and the disabled cancel-btn. */
+
+/* Dot Colors and pastel backgrounds depending on types */
+:global(#registration-history-calendar) .special {
+  background: #e0faf4;
+}
+:global(#registration-history-calendar) .special [data-role="title"]::before {
+  background: #00D3A9;
+}
+
+:global(#registration-history-calendar) .mentoring {
+  background: #e6eef8;
+}
+:global(#registration-history-calendar) .mentoring [data-role="title"]::before {
+  background: #086DB7;
+}
+
+/* Highlights lectures that are NOT yet in the user's Google Calendar. */
+:global(#registration-history-calendar) .not-in-google-calendar {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #f59e0b inset;
+  position: relative;
+}
+
+:global(#registration-history-calendar) .not-in-google-calendar::after {
+  content: '미등록';
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  background-color: #f59e0b;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg%20class%3D%22lucide%20lucide-calendar-days%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20%3E%20%3Cpath%20d%3D%22M8%202v4%22%20%2F%3E%20%3Cpath%20d%3D%22M16%202v4%22%20%2F%3E%20%3Crect%20width%3D%2218%22%20height%3D%2218%22%20x%3D%223%22%20y%3D%224%22%20rx%3D%222%22%20%2F%3E%20%3Cpath%20d%3D%22M3%2010h18%22%20%2F%3E%20%3Cpath%20d%3D%22M8%2014h.01%22%20%2F%3E%20%3Cpath%20d%3D%22M12%2014h.01%22%20%2F%3E%20%3Cpath%20d%3D%22M16%2014h.01%22%20%2F%3E%20%3Cpath%20d%3D%22M8%2018h.01%22%20%2F%3E%20%3Cpath%20d%3D%22M12%2018h.01%22%20%2F%3E%20%3Cpath%20d%3D%22M16%2018h.01%22%20%2F%3E%20%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: 5px center;
+  background-size: 10px 10px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px 1px 19px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+}
+
+:global(#registration-history-calendar) .google-calendar-just-registered {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 1px #16a34a inset;
+  position: relative;
+  animation: asm-google-calendar-registered-card 3.2s ease-out forwards;
+}
+
+:global(#registration-history-calendar) .google-calendar-just-registered::after {
+  content: '등록완료!';
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  background-color: #16a34a;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+  animation: asm-google-calendar-registered-badge 3.2s ease-out forwards;
+}
+
+@keyframes asm-google-calendar-registered-card {
+  0%,
+  70% {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 1px #16a34a inset;
+  }
+  100% {
+    border-color: #e2e8f0;
+    box-shadow: 0 0 0 1px rgba(22, 163, 74, 0) inset;
+  }
+}
+
+@keyframes asm-google-calendar-registered-badge {
+  0%,
+  62% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+
+:global(#registration-history-calendar) .special [data-role="type"] {
+  background: #b8f5e8;
+  color: #007a5e;
+}
+
+:global(#registration-history-calendar) .mentoring [data-role="type"] {
+  background: #ccd8f0;
+  color: #086DB7;
+}
+
+
+/* Lectures the mentor deleted from the catalog: kept so the user's own
+   registration stays visible, marked so the missing detail link is explained. */
+:global(#registration-history-calendar) .mentor-deleted {
+  position: relative;
+}
+
+:global(#registration-history-calendar) .mentor-deleted::after {
+  content: '강의 삭제됨';
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  background-color: #64748b;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+}
+
+/* Mentor-deleted lecture that still lingers in the user's Google Calendar:
+   pink border nudging cleanup. Defined after .mentor-deleted so this ::after
+   badge overrides the slate "강의 삭제됨" one (same element, same specificity). */
+:global(#registration-history-calendar) .google-still-present {
+  border-color: #ec4899;
+  box-shadow: 0 0 0 1px #ec4899 inset;
+  position: relative;
+}
+
+:global(#registration-history-calendar) .google-still-present::after {
+  content: '구글 캘린더에 남음';
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  background-color: #ec4899;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Confirmation pulse after the user removes the leftover in Google Calendar —
+   mirror of the green "등록완료!" register pulse; the card is hidden right after. */
+:global(#registration-history-calendar) .google-just-deleted {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 1px #16a34a inset;
+  position: relative;
+  animation: asm-google-calendar-registered-card 3.2s ease-out forwards;
+}
+
+:global(#registration-history-calendar) .google-just-deleted::after {
+  content: '구글 캘린더에서 삭제됨!';
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  background-color: #16a34a;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  animation: asm-google-calendar-registered-badge 3.2s ease-out forwards;
+}
+
+:global(#registration-history-calendar) .gcal-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  margin-top: 3px;
+  padding: 3px 6px;
+  border: 1px solid #ec4899;
+  border-radius: 5px;
+  background: #fdf2f8;
+  color: #be185d;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+:global(#registration-history-calendar) .gcal-delete-btn:hover {
+  background: #fce7f3;
+  border-color: #db2777;
+}
+
+/* Manual "hide this card" × for mentor-deleted lectures — sits at the top-left
+   corner, mirroring the status badge at top-right. */
+:global(#registration-history-calendar) .dismiss-btn {
+  position: absolute;
+  top: -8px;
+  left: 6px;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+:global(#registration-history-calendar) .dismiss-btn:hover {
+  background: #64748b;
+  color: #ffffff;
+}
+
+/* "관리 모드"에서 드러난 숨김 카드: 흐리게 + 복원 버튼. */
+:global(#registration-history-calendar) .dismissed-preview {
+  opacity: 0.5;
+}
+
+:global(#registration-history-calendar) .restore-btn {
+  position: absolute;
+  top: -8px;
+  left: 6px;
+  z-index: 1;
+  padding: 1px 8px;
+  border: none;
+  border-radius: 8px;
+  background: #475569;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+:global(#registration-history-calendar) .restore-btn:hover {
+  background: #1e293b;
+}
+
+/* Collapse/expand toggle for mentor-deleted lecture detail rows. */
+:global(#registration-history-calendar) .expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  margin-top: 3px;
+  padding: 3px 0;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 5px;
+  background: transparent;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+:global(#registration-history-calendar) .expand-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+:global(#registration-history-calendar) .expand-toggle .chevron {
+  display: inline-flex;
+  transition: transform 0.15s ease;
+}
+
+:global(#registration-history-calendar) .expand-toggle .chevron.expanded {
+  transform: rotate(180deg);
+}
+
+:global(#registration-history-calendar) .cancel-btn.unavailable {
+  opacity: 0.5;
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border-color: rgba(226, 232, 240, 0.6);
+}
